@@ -35,10 +35,14 @@
   .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#1e263c;border:1px solid #2b3150;color:#bcd3ff;font-size:12px}
   .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);background:#1b2130;border:1px solid #2b3244;padding:10px 14px;border-radius:10px;color:#d9e7ff;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-  /* Login simplificado (mesmo padrão do seu ADM anterior) */
+  /* Login */
   #login{max-width:420px;margin:12vh auto;padding:20px}
   .err{color:#ff6b6b;font-size:12px;display:none;margin-top:6px}
   .ok{color:#2dd4bf;font-size:12px;display:none;margin-top:6px}
+  /* Vendas */
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0}
+  .stat{background:#12141b;border:1px solid #222532;border-radius:12px;padding:12px;text-align:center}
+  .stat h3{margin:2px 0 4px}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
@@ -86,6 +90,7 @@
       <button class="tab" data-tab="payment">Pagamento</button>
       <button class="tab" data-tab="prices">Preços</button>
       <button class="tab" data-tab="coupons">Cupons</button>
+      <button class="tab" data-tab="sales">Vendas (este navegador)</button>
       <button class="tab" data-tab="advanced">Avançado (CSS)</button>
     </div>
 
@@ -160,6 +165,31 @@
       </table>
     </div>
 
+    <!-- Vendas (este navegador) -->
+    <div id="sales" class="pane">
+      <div class="row">
+        <button id="btnRefreshSales" class="btn">Atualizar</button>
+        <button id="btnExportSales" class="btn secondary">Exportar CSV</button>
+        <button id="btnClearSales" class="btn danger">Limpar registros</button>
+        <span class="muted">Lendo <code>localStorage</code> deste navegador: <code>rk_bilhetes_vendas_v1</code></span>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="muted">Total de vendas</div><h3 id="stCount">0</h3></div>
+        <div class="stat"><div class="muted">Valor arrecadado</div><h3 id="stSum">R$ 0,00</h3></div>
+        <div class="stat"><div class="muted">Última venda</div><h3 id="stLast">—</h3></div>
+      </div>
+      <div style="overflow:auto">
+        <table class="table" id="tblSales">
+          <thead><tr><th>Data/Hora</th><th>Nome</th><th>WhatsApp</th><th>M</th><th>F</th><th>Total (R$)</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="muted" style="margin-top:8px">
+        Observação: por ser um site estático (GitHub Pages), cada compra é salva no <strong>navegador onde foi feita</strong>.  
+        Para ver todas as vendas juntas, recomendo sincronização em nuvem (Google Sheets / Supabase). Posso te entregar essa integração quando quiser.
+      </p>
+    </div>
+
     <!-- Avançado -->
     <div id="advanced" class="pane">
       <label>CSS personalizado (injetado no site)</label>
@@ -168,11 +198,10 @@
 h1{ letter-spacing:.5px }"></textarea>
       <div class="row" style="margin-top:8px">
         <button id="btnSaveCss" class="btn">Salvar CSS</button>
-        <button id="btnExport" class="btn secondary">Exportar JSON</button>
-        <label class="btn ghost" style="cursor:pointer">Importar JSON<input id="fileImport" type="file" accept="application/json" style="display:none"></label>
-        <button id="btnReset" class="btn danger">Resetar padrão</button>
+        <button id="btnExportCfg" class="btn secondary">Exportar JSON</button>
+        <label class="btn ghost" style="cursor:pointer">Importar JSON<input id="fileImportCfg" type="file" accept="application/json" style="display:none"></label>
+        <button id="btnResetCfg" class="btn danger">Resetar padrão</button>
       </div>
-      <p class="muted">Dica: deixe o site aberto em outra guia. Ao salvar, ele atualiza ao vivo.</p>
     </div>
   </div>
 </div>
@@ -180,16 +209,17 @@ h1{ letter-spacing:.5px }"></textarea>
 <div id="toast" class="toast"></div>
 
 <script>
-/* ===== Constantes / chaves ===== */
+/* ===== Chaves/const ===== */
 const ADMIN_EMAIL='admbilheteria@gmail.com';
 const ADMIN_PASS='rkvidalouca1@';
 const ADMIN_FLAG='rk_admin_logged_v1';
 const TOTP_ENABLED='rk_totp_enabled';
 const TOTP_SECRET='rk_totp_secret_b32';
 const TOTP_ISSUER='Baile do RK';
-const CFG_KEY='rk_site_cfg_v1';
 
-/* ===== Config padrão (mesma do index) ===== */
+const CFG_KEY='rk_site_cfg_v1';
+const DB_KEY='rk_bilhetes_vendas_v1';
+
 const DEFAULT_CFG = {
   theme:{ primary:'#7c5cff', secondary:'#3ca6ff', radius:14 },
   texts:{
@@ -208,11 +238,15 @@ const DEFAULT_CFG = {
   customCSS:''
 };
 
-/* ===== Util ===== */
+/* ===== Utils ===== */
 const id = s => document.getElementById(s);
 const toast = m => { const t=id('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1500); };
+const BRL = n => Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 function loadCfg(){ try{ return Object.assign({}, DEFAULT_CFG, JSON.parse(localStorage.getItem(CFG_KEY)||'{}')); }catch(e){ return JSON.parse(JSON.stringify(DEFAULT_CFG)); } }
 function saveCfg(cfg){ localStorage.setItem(CFG_KEY, JSON.stringify(cfg||{})); toast('Configurações salvas.'); }
+function loadSales(){ try{ return JSON.parse(localStorage.getItem(DB_KEY)||'[]'); }catch(e){ return []; } }
+function saveSales(rows){ localStorage.setItem(DB_KEY, JSON.stringify(rows||[])); toast('Registros salvos.'); }
+function fmtDate(iso){ const d=new Date(iso); return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR'); }
 
 /* ===== 2FA helpers ===== */
 const b32alphabet="ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
@@ -283,10 +317,11 @@ document.addEventListener('click',(e)=>{
     const tab=e.target.dataset.tab;
     document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
     id(tab).classList.add('active');
+    if(tab==='sales'){ renderSales(); }
   }
 });
 
-/* ===== Render / Bind ===== */
+/* ===== Render / Bind (Config) ===== */
 function renderAppearance(cfg){ id('thPrimary').value = cfg.theme.primary; id('thSecondary').value = cfg.theme.secondary; id('thRadius').value = cfg.theme.radius; }
 function renderTexts(cfg){
   id('txHeroTitle').value   = cfg.texts.heroTitle;
@@ -329,7 +364,7 @@ function renderAdvanced(cfg){ id('advCss').value = cfg.customCSS || ''; }
 
 function renderAll(){ const cfg=loadCfg(); renderAppearance(cfg); renderTexts(cfg); renderPayment(cfg); renderPrices(cfg); renderCoupons(cfg); renderAdvanced(cfg); }
 
-/* ===== Saves ===== */
+/* ===== Saves (Config) ===== */
 id('btnSaveAppearance').addEventListener('click',()=>{ const cfg=loadCfg(); cfg.theme.primary=id('thPrimary').value||'#7c5cff'; cfg.theme.secondary=id('thSecondary').value||'#3ca6ff'; cfg.theme.radius=Number(id('thRadius').value||14); saveCfg(cfg); });
 id('btnSaveTexts').addEventListener('click',()=>{ const cfg=loadCfg(); cfg.texts.heroTitle=id('txHeroTitle').value||'Bilheteria Online'; cfg.texts.heroSubtitle=id('txHeroSubtitle').value||'Baile do RK'; cfg.texts.pageTitle=id('txPageTitle').value||DEFAULT_CFG.texts.pageTitle; cfg.texts.pageSubtitle=id('txPageSubtitle').value||DEFAULT_CFG.texts.pageSubtitle; cfg.texts.noticeImportant=id('txNotice1').value||DEFAULT_CFG.texts.noticeImportant; cfg.texts.noticePayment=id('txNotice2').value||DEFAULT_CFG.texts.noticePayment; cfg.texts.thanksTitle=id('txThanksTitle').value||DEFAULT_CFG.texts.thanksTitle; cfg.texts.thanksText=id('txThanksText').value||DEFAULT_CFG.texts.thanksText; saveCfg(cfg); });
 id('btnSavePayment').addEventListener('click',()=>{ const cfg=loadCfg(); cfg.payment.pixKey=id('pgPixKey').value||cfg.payment.pixKey; cfg.payment.merchant=(id('pgMerchant').value||cfg.payment.merchant).toUpperCase().slice(0,25); cfg.payment.city=(id('pgCity').value||cfg.payment.city).toUpperCase().slice(0,15); cfg.payment.whatsapp=id('pgWhats').value||cfg.payment.whatsapp; saveCfg(cfg); });
@@ -357,17 +392,57 @@ id('cpTable').addEventListener('click',(e)=>{
   if(act==='toggle'){ cfg.coupons[idx].active=!cfg.coupons[idx].active; saveCfg(cfg); renderCoupons(cfg); }
 });
 
-/* Export / Import / Reset */
-id('btnExport').addEventListener('click',()=>{
-  const cfg=loadCfg(); const blob=new Blob([JSON.stringify(cfg,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='config-bilhetes.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+/* ===== Vendas (este navegador) ===== */
+function renderSales(){
+  const tbody=id('tblSales').querySelector('tbody'); tbody.innerHTML='';
+  const rows=loadSales();
+  if(!rows.length){
+    tbody.innerHTML='<tr><td colspan="6" style="color:#9aa5b1;text-align:center">Sem registros neste navegador.</td></tr>';
+  }else{
+    rows.forEach(r=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${fmtDate(r.ts)}</td><td>${r.nome||''}</td><td>+55 ${(r.whats||'')}</td><td>${r.qM||0}</td><td>${r.qF||0}</td><td>${BRL(r.total||0)}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+  id('stCount').textContent = String(rows.length);
+  const sum = rows.reduce((a,b)=>a+Number(b.total||0),0);
+  id('stSum').textContent = BRL(sum);
+  id('stLast').textContent = rows.length ? fmtDate(rows[rows.length-1].ts) : '—';
+}
+function exportSalesCSV(){
+  const rows=loadSales(), header=['data_hora','nome','whatsapp','qtd_m','qtd_f','total_brl'];
+  const lines=[header.join(',')].concat(rows.map(r=>[
+    fmtDate(r.ts).replaceAll(',',' '),
+    `"${(r.nome||'').replaceAll('"','""')}"`,
+    `+55 ${r.whats||''}`,
+    r.qM||0, r.qF||0,
+    Number(r.total||0).toFixed(2).replace('.',',')
+  ].join(',')));
+  const blob=new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='vendas-baile-do-rk.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+}
+function clearSales(){
+  if(confirm('Deseja apagar TODOS os registros deste navegador?')){
+    localStorage.removeItem(DB_KEY); renderSales(); toast('Registros apagados.');
+  }
+}
+id('btnRefreshSales').addEventListener('click', renderSales);
+id('btnExportSales').addEventListener('click', exportSalesCSV);
+id('btnClearSales').addEventListener('click', clearSales);
+
+/* ===== Export/Import Config ===== */
+id('btnExportCfg').addEventListener('click',()=>{
+  const cfg=loadCfg(); const blob=new Blob([JSON.stringify(cfg,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='config-bilhetes.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
 });
-id('fileImport').addEventListener('change',(e)=>{
+id('fileImportCfg').addEventListener('change',(e)=>{
   const f=e.target.files?.[0]; if(!f) return;
   const r=new FileReader();
   r.onload=()=>{ try{ const cfg=JSON.parse(r.result); saveCfg(cfg); renderAll(); toast('Config importada.'); }catch{ alert('JSON inválido.'); } };
   r.readAsText(f);
 });
-id('btnReset').addEventListener('click',()=>{ if(confirm('Resetar para padrão?')){ localStorage.setItem(CFG_KEY, JSON.stringify(DEFAULT_CFG)); renderAll(); toast('Padrão restaurado.'); }});
+id('btnResetCfg').addEventListener('click',()=>{ if(confirm('Resetar para padrão?')){ localStorage.setItem(CFG_KEY, JSON.stringify(DEFAULT_CFG)); renderAll(); toast('Padrão restaurado.'); }});
 
 /* Login binds */
 id('btnLogin').addEventListener('click', doLogin);
