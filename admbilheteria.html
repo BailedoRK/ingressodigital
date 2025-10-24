@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>ADM – Bilheteria Online</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#0e0f13;--panel:#16181f;--soft:#1a1e29;--text:#e9edf1;--muted:#9aa5b1;--accent:#7c5cff;--blue:#3ca6ff}
+  *{box-sizing:border-box} html,body{height:100%}
+  body{margin:0;font-family:"Inter",system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial;background:linear-gradient(180deg,#0d0f14 0,#0e0f13 100%);color:var(--text)}
+  .wrap{max-width:1100px;margin:28px auto;padding:0 16px 56px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+  h1{margin:0;font-size:clamp(20px,3vw,28px);font-weight:800;background:linear-gradient(90deg,var(--accent),#8f85ff,var(--blue));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .card{background:linear-gradient(180deg,var(--panel),#141720 50%,var(--panel));border:1px solid #222532;border-radius:14px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px}
+  .tab{padding:8px 12px;border-radius:10px;border:1px solid #2a2f3d;background:#1a1f2b;color:#dbe3ff;cursor:pointer}
+  .tab.active{background:linear-gradient(135deg,#7c5cff,#4e7dff);border-color:#4e7dff}
+  .pane{display:none}.pane.active{display:block}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media (max-width:840px){.grid2,.grid3{grid-template-columns:1fr}}
+  label{display:block;font-size:12px;color:#9aa5b1;margin:0 0 6px}
+  input[type=text],input[type=number],textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #2a2f3d;background:var(--soft);color:#e9edf1}
+  textarea{min-height:120px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border:0;border-radius:10px;background:linear-gradient(135deg,#7c5cff,#4e7dff);color:#fff;font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(124,92,255,.35)}
+  .btn.secondary{background:linear-gradient(180deg,#2b3345,#22293a);color:#e6ebff}
+  .btn.danger{background:linear-gradient(180deg,#6b2934,#5a202a)}
+  .btn.ghost{background:linear-gradient(180deg,#242a3a,#1d2333);color:#d9e7ff}
+  .muted{color:#9aa5b1;font-size:12px}
+  .table{width:100%;border-collapse:collapse;margin-top:8px}
+  .table th,.table td{border-bottom:1px solid #2a2f3d;padding:8px;text-align:left}
+  .table th{background:#151a24}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#1e263c;border:1px solid #2b3150;color:#bcd3ff;font-size:12px}
+  .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);background:#1b2130;border:1px solid #2b3244;padding:10px 14px;border-radius:10px;color:#d9e7ff;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  /* Login simplificado (mesmo padrão do seu ADM anterior) */
+  #login{max-width:420px;margin:12vh auto;padding:20px}
+  .err{color:#ff6b6b;font-size:12px;display:none;margin-top:6px}
+  .ok{color:#2dd4bf;font-size:12px;display:none;margin-top:6px}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+<div id="login" class="card" style="display:none">
+  <h1>Área Administrativa</h1>
+  <p class="muted">Entre com e-mail, senha e 2FA se habilitado.</p>
+  <label>E-mail</label><input id="email" type="text" placeholder="admbilheteria@gmail.com">
+  <label>Senha</label><input id="pass" type="password" placeholder="********">
+  <div class="row" style="margin-top:8px"><button id="btnLogin" class="btn">Entrar</button></div>
+  <div id="errLogin" class="err">E-mail ou senha incorretos.</div>
+  <div id="twofa" style="display:none;margin-top:12px">
+    <label>Código 2FA</label><input id="totpCode" type="number" inputmode="numeric" placeholder="000000">
+    <div class="row" style="margin-top:8px"><button id="btnVerify" class="btn">Verificar</button><button id="btnBack1" class="btn secondary">Voltar</button></div>
+    <div id="err2" class="err">Código inválido.</div>
+  </div>
+  <div id="setup" style="display:none;margin-top:12px">
+    <div class="grid2">
+      <div style="background:#fff;border:1px solid #e6e9f3;border-radius:10px;display:grid;place-items:center;padding:8px"><div id="totpQR"></div></div>
+      <div>
+        <div class="muted">Segredo (Base32):</div>
+        <code id="totpSecret" style="display:inline-block;background:#0f1322;border:1px solid #293056;border-radius:8px;padding:8px;color:#d8e4ff"></code>
+        <div class="row" style="margin-top:8px"><button id="btnCopySecret" class="btn secondary">Copiar segredo</button><button id="btnRegenSecret" class="btn">Gerar outro</button></div>
+      </div>
+    </div>
+    <label style="margin-top:8px">Digite o código 2FA do app</label><input id="totpSetupCode" type="number" inputmode="numeric" placeholder="000000">
+    <div class="row" style="margin-top:8px"><button id="btnConfirmSetup" class="btn">Confirmar 2FA</button><button id="btnBack2" class="btn secondary">Voltar</button></div>
+    <div id="okSetup" class="ok">2FA configurado!</div><div id="errSetup" class="err">Código inválido.</div>
+  </div>
+</div>
+
+<div id="app" class="wrap" style="display:none">
+  <header>
+    <h1>Painel – Configurações do Site</h1>
+    <div class="row">
+      <a class="btn ghost" href="../" target="_blank" rel="noopener">Abrir site</a>
+      <button id="btnLogout" class="btn secondary">Sair</button>
+    </div>
+  </header>
+
+  <div class="card">
+    <div class="tabs">
+      <button class="tab active" data-tab="appearance">Aparência</button>
+      <button class="tab" data-tab="texts">Textos & Avisos</button>
+      <button class="tab" data-tab="payment">Pagamento</button>
+      <button class="tab" data-tab="prices">Preços</button>
+      <button class="tab" data-tab="coupons">Cupons</button>
+      <button class="tab" data-tab="advanced">Avançado (CSS)</button>
+    </div>
+
+    <!-- Aparência -->
+    <div id="appearance" class="pane active">
+      <div class="grid3">
+        <div><label>Cor Primária</label><input id="thPrimary" type="text" placeholder="#7c5cff"></div>
+        <div><label>Cor Secundária</label><input id="thSecondary" type="text" placeholder="#3ca6ff"></div>
+        <div><label>Raio dos Cantos (px)</label><input id="thRadius" type="number" min="0" step="1" placeholder="14"></div>
+      </div>
+      <p class="muted">Use valores hex (#RRGGBB). A cor primária define o roxo dos botões/gradientes.</p>
+      <div class="row" style="margin-top:8px">
+        <button id="btnSaveAppearance" class="btn">Salvar</button>
+        <span class="muted">Aplica ao vivo no site aberto em outra guia.</span>
+      </div>
+    </div>
+
+    <!-- Textos & Avisos -->
+    <div id="texts" class="pane">
+      <div class="grid2">
+        <div><label>Título hero (SVG)</label><input id="txHeroTitle" type="text" placeholder="Bilheteria Online"></div>
+        <div><label>Subtítulo hero (SVG)</label><input id="txHeroSubtitle" type="text" placeholder="Baile do RK"></div>
+      </div>
+      <div class="grid2" style="margin-top:10px">
+        <div><label>H1 da página</label><input id="txPageTitle" type="text" placeholder="Finalize seu ingresso com Pix em segundos"></div>
+        <div><label>Subtítulo da página</label><input id="txPageSubtitle" type="text" placeholder="Wizard de 3 etapas…"></div>
+      </div>
+      <label style="margin-top:10px">Aviso (etapa 1)</label><textarea id="txNotice1"></textarea>
+      <label style="margin-top:10px">Aviso (pagamento)</label><textarea id="txNotice2"></textarea>
+      <label style="margin-top:10px">Título “Obrigado”</label><input id="txThanksTitle" type="text" placeholder="🎉 Obrigado pela compra!">
+      <label style="margin-top:10px">Texto “Obrigado” (HTML permitido)</label><textarea id="txThanksText"></textarea>
+      <div class="row" style="margin-top:8px">
+        <button id="btnSaveTexts" class="btn">Salvar</button>
+      </div>
+    </div>
+
+    <!-- Pagamento -->
+    <div id="payment" class="pane">
+      <div class="grid3">
+        <div><label>Chave PIX</label><input id="pgPixKey" type="text" placeholder="email@exemplo.com"></div>
+        <div><label>Nome do recebedor (max 25)</label><input id="pgMerchant" type="text" placeholder="NOME COMPLETO"></div>
+        <div><label>Cidade (max 15)</label><input id="pgCity" type="text" placeholder="RECIFE"></div>
+      </div>
+      <div class="grid2" style="margin-top:10px">
+        <div><label>WhatsApp destino (formato +55DDDNXXXXXXXX)</label><input id="pgWhats" type="text" placeholder="+5581xxxxxxxxx"></div>
+        <div class="pill">O site já monta a mensagem com nomes e total.</div>
+      </div>
+      <div class="row" style="margin-top:8px"><button id="btnSavePayment" class="btn">Salvar</button></div>
+    </div>
+
+    <!-- Preços -->
+    <div id="prices" class="pane">
+      <div class="grid2">
+        <div><label>Preço base Masculino (R$)</label><input id="prBaseM" type="number" step="0.01" min="0" placeholder="25"></div>
+        <div><label>Preço base Feminino (R$)</label><input id="prBaseF" type="number" step="0.01" min="0" placeholder="15"></div>
+      </div>
+      <p class="muted">Os cupons abaixo podem substituir esses valores quando aplicados.</p>
+      <div class="row" style="margin-top:8px"><button id="btnSavePrices" class="btn">Salvar</button></div>
+    </div>
+
+    <!-- Cupons -->
+    <div id="coupons" class="pane">
+      <div class="row">
+        <div><label>Código (exato)</label><input id="cpCode" type="text" placeholder="PRIMEIRO LOTE"></div>
+        <div><label>Preço M (R$)</label><input id="cpM" type="number" step="0.01" min="0" placeholder="20"></div>
+        <div><label>Preço F (R$)</label><input id="cpF" type="number" step="0.01" min="0" placeholder="10"></div>
+        <div class="row" style="align-items:flex-end"><button id="btnAddCoupon" class="btn">Adicionar/Atualizar</button></div>
+      </div>
+      <table class="table" id="cpTable">
+        <thead><tr><th>Código</th><th>Masculino</th><th>Feminino</th><th>Status</th><th>Ações</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <!-- Avançado -->
+    <div id="advanced" class="pane">
+      <label>CSS personalizado (injetado no site)</label>
+      <textarea id="advCss" placeholder="/* exemplo: */ 
+:root{ --r:18px } 
+h1{ letter-spacing:.5px }"></textarea>
+      <div class="row" style="margin-top:8px">
+        <button id="btnSaveCss" class="btn">Salvar CSS</button>
+        <button id="btnExport" class="btn secondary">Exportar JSON</button>
+        <label class="btn ghost" style="cursor:pointer">Importar JSON<input id="fileImport" type="file" accept="application/json" style="display:none"></label>
+        <button id="btnReset" class="btn danger">Resetar padrão</button>
+      </div>
+      <p class="muted">Dica: deixe o site aberto em outra guia. Ao salvar, ele atualiza ao vivo.</p>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+/* ===== Constantes / chaves ===== */
+const ADMIN_EMAIL='admbilheteria@gmail.com';
+const ADMIN_PASS='rkvidalouca1@';
+const ADMIN_FLAG='rk_admin_logged_v1';
+const TOTP_ENABLED='rk_totp_enabled';
+const TOTP_SECRET='rk_totp_secret_b32';
+const TOTP_ISSUER='Baile do RK';
+const CFG_KEY='rk_site_cfg_v1';
+
+/* ===== Config padrão (mesma do index) ===== */
+const DEFAULT_CFG = {
+  theme:{ primary:'#7c5cff', secondary:'#3ca6ff', radius:14 },
+  texts:{
+    heroTitle:'Bilheteria Online',
+    heroSubtitle:'Baile do RK',
+    pageTitle:'Finalize seu ingresso com Pix em segundos',
+    pageSubtitle:'Wizard de 3 etapas • QR Pix com valor automático • Mensagem do WhatsApp com todos os nomes.',
+    noticeImportant:'<strong>Importante:</strong><br>• <strong>Não haverá devolução de valor.</strong> Só compre o ingresso se tiver total certeza de que vai comparecer ao evento.<br>• A <strong>localização e demais informações</strong> serão divulgadas no <strong>grupo exclusivo dos compradores</strong> após a confirmação do pagamento.',
+    noticePayment:'<strong>Importante:</strong><br>• <strong>Não haverá devolução de valor.</strong><br>• A <strong>localização e informações oficiais</strong> serão divulgadas apenas no <strong>grupo exclusivo dos compradores</strong> após a confirmação do pagamento.',
+    thanksTitle:'🎉 Obrigado pela compra!',
+    thanksText:'Recebemos sua confirmação. Agora é só <strong>enviar o comprovante</strong> no WhatsApp (já abrimos em outra guia para você). Assim que validarmos, você será adicionado ao <strong>grupo exclusivo dos compradores</strong>, onde divulgaremos a <strong>localização e todas as informações oficiais</strong> do evento.'
+  },
+  payment:{ pixKey:'bailedork2025@gmail.com', merchant:'RICARDO WILLYSMAR PEREIRA DA SILVA', city:'RECIFE', whatsapp:'+5581991405977' },
+  prices:{ M:25, F:15 },
+  coupons:[ { code:'PRIMEIRO LOTE', M:20, F:10, active:true } ],
+  customCSS:''
+};
+
+/* ===== Util ===== */
+const id = s => document.getElementById(s);
+const toast = m => { const t=id('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1500); };
+function loadCfg(){ try{ return Object.assign({}, DEFAULT_CFG, JSON.parse(localStorage.getItem(CFG_KEY)||'{}')); }catch(e){ return JSON.parse(JSON.stringify(DEFAULT_CFG)); } }
+function saveCfg(cfg){ localStorage.setItem(CFG_KEY, JSON.stringify(cfg||{})); toast('Configurações salvas.'); }
+
+/* ===== 2FA helpers ===== */
+const b32alphabet="ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+function b32decodeToBytes(b32){ const s=(b32||"").toUpperCase().replace(/=+$/,'').replace(/\s+/g,''); let bits='',out=[]; for(const ch of s){ const v=b32alphabet.indexOf(ch); if(v<0) continue; bits += v.toString(2).padStart(5,'0'); } for(let i=0;i+8<=bits.length;i+=8){ out.push(parseInt(bits.slice(i,i+8),2)); } return new Uint8Array(out); }
+async function hmacSha1(keyBytes,msgBytes){ const k=await crypto.subtle.importKey('raw',keyBytes,{name:'HMAC',hash:'SHA-1'},false,['sign']); const sig=await crypto.subtle.sign('HMAC',k,msgBytes); return new Uint8Array(sig); }
+function int2bytes(num){ const a=new Uint8Array(8); new DataView(a.buffer).setUint32(4,num); return a; }
+async function totpNow(b32Secret,period=30,digits=6){ const key=b32decodeToBytes(b32Secret); const ctr=Math.floor(Date.now()/1000/period); const msg=int2bytes(ctr); const h=await hmacSha1(key,msg); const off=h[h.length-1]&0x0f; const bin=((h[off]&0x7f)<<24)|((h[off+1]&0xff)<<16)|((h[off+2]&0xff)<<8)|(h[off+3]&0xff); return String(bin % (10**digits)).padStart(digits,'0'); }
+function randomBase32(len=32){ const b=new Uint8Array(len); crypto.getRandomValues(b); let out=''; for(const x of b){ out += b32alphabet[x%32]; } return out; }
+function otpauthURL(secret,label,issuer=TOTP_ISSUER){ return `otpauth://totp/${encodeURIComponent(label)}?secret=${secret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`; }
+
+/* ===== Login ===== */
+function showLogin(){ id('login').style.display='block'; id('app').style.display='none'; }
+function showApp(){ id('login').style.display='none'; id('app').style.display='block'; }
+
+function doLogin(){
+  const e=(id('email').value||'').trim().toLowerCase();
+  const p=id('pass').value||'';
+  id('errLogin').style.display='none';
+  if(e===ADMIN_EMAIL && p===ADMIN_PASS){
+    const enabled=localStorage.getItem(TOTP_ENABLED)==='1';
+    const secret=localStorage.getItem(TOTP_SECRET)||'';
+    if(enabled && secret){
+      id('twofa').style.display='block';
+      id('setup').style.display='none';
+    }else{
+      const sec = randomBase32(32);
+      localStorage.setItem(TOTP_SECRET, sec);
+      id('twofa').style.display='none';
+      id('setup').style.display='block';
+      const url=otpauthURL(sec, `${TOTP_ISSUER}:${ADMIN_EMAIL}`);
+      id('totpQR').innerHTML=''; new QRCode(id('totpQR'),{text:url,width:150,height:150,colorDark:'#000',colorLight:'#fff'});
+      id('totpSecret').textContent=sec;
+    }
+  }else{
+    id('errLogin').style.display='block';
+  }
+}
+async function verify2FA(){
+  const code=(id('totpCode').value||'').trim().padStart(6,'0');
+  const secret=localStorage.getItem(TOTP_SECRET)||'';
+  if(code.length!==6 || !secret){ id('err2').style.display='block'; return; }
+  const cur=await totpNow(secret); const prev=await totpNow(secret); const next=await totpNow(secret);
+  if([cur,prev,next].includes(code)){ localStorage.setItem(ADMIN_FLAG,'1'); enter(); }
+  else{ id('err2').style.display='block'; }
+}
+async function confirmSetup2FA(){
+  const code=(id('totpSetupCode').value||'').trim().padStart(6,'0');
+  const secret=localStorage.getItem(TOTP_SECRET)||'';
+  if(code.length!==6 || !secret){ id('errSetup').style.display='block'; return; }
+  const cur=await totpNow(secret); const prev=await totpNow(secret); const next=await totpNow(secret);
+  if([cur,prev,next].includes(code)){
+    localStorage.setItem(TOTP_ENABLED,'1');
+    id('errSetup').style.display='none'; id('okSetup').style.display='block';
+    setTimeout(()=>{ localStorage.setItem(ADMIN_FLAG,'1'); enter(); },600);
+  }else{ id('errSetup').style.display='block'; }
+}
+function copySecret(){ const s=localStorage.getItem(TOTP_SECRET)||''; if(!s) return; navigator.clipboard?.writeText(s).then(()=>toast('Segredo copiado!')); }
+function regenSecret(){ const s=randomBase32(32); localStorage.setItem(TOTP_SECRET,s); id('totpSecret').textContent=s; id('totpQR').innerHTML=''; new QRCode(id('totpQR'),{text:otpauthURL(s,`${TOTP_ISSUER}:${ADMIN_EMAIL}`),width:150,height:150,colorDark:'#000',colorLight:'#fff'}); toast('Novo segredo gerado.'); }
+
+function enter(){ showApp(); renderAll(); toast('Login realizado.'); }
+function logout(){ localStorage.removeItem(ADMIN_FLAG); showLogin(); toast('Sessão encerrada.'); }
+
+/* ===== UI Tabs ===== */
+document.addEventListener('click',(e)=>{
+  if(e.target.classList.contains('tab')){
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    e.target.classList.add('active');
+    const tab=e.target.dataset.tab;
+    document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
+    id(tab).classList.add('active');
+  }
+});
+
+/* ===== Render / Bind ===== */
+function renderAppearance(cfg){ id('thPrimary').value = cfg.theme.primary; id('thSecondary').value = cfg.theme.secondary; id('thRadius').value = cfg.theme.radius; }
+function renderTexts(cfg){
+  id('txHeroTitle').value   = cfg.texts.heroTitle;
+  id('txHeroSubtitle').value= cfg.texts.heroSubtitle;
+  id('txPageTitle').value   = cfg.texts.pageTitle;
+  id('txPageSubtitle').value= cfg.texts.pageSubtitle;
+  id('txNotice1').value     = cfg.texts.noticeImportant;
+  id('txNotice2').value     = cfg.texts.noticePayment;
+  id('txThanksTitle').value = cfg.texts.thanksTitle;
+  id('txThanksText').value  = cfg.texts.thanksText;
+}
+function renderPayment(cfg){
+  id('pgPixKey').value = cfg.payment.pixKey;
+  id('pgMerchant').value = cfg.payment.merchant;
+  id('pgCity').value = cfg.payment.city;
+  id('pgWhats').value = cfg.payment.whatsapp;
+}
+function renderPrices(cfg){
+  id('prBaseM').value = cfg.prices.M;
+  id('prBaseF').value = cfg.prices.F;
+}
+function renderCoupons(cfg){
+  const tbody=id('cpTable').querySelector('tbody'); tbody.innerHTML='';
+  (cfg.coupons||[]).forEach((c,idx)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td>${c.code}</td>
+      <td>R$ ${Number(c.M).toFixed(2).replace('.',',')}</td>
+      <td>R$ ${Number(c.F).toFixed(2).replace('.',',')}</td>
+      <td>${c.active ? '<span class="pill">Ativo</span>' : '<span class="pill" style="opacity:.6">Inativo</span>'}</td>
+      <td class="row">
+        <button class="btn secondary" data-act="toggle" data-idx="${idx}">${c.active?'Desativar':'Ativar'}</button>
+        <button class="btn" data-act="edit" data-idx="${idx}">Editar</button>
+        <button class="btn danger" data-act="del" data-idx="${idx}">Remover</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+function renderAdvanced(cfg){ id('advCss').value = cfg.customCSS || ''; }
+
+function renderAll(){ const cfg=loadCfg(); renderAppearance(cfg); renderTexts(cfg); renderPayment(cfg); renderPrices(cfg); renderCoupons(cfg); renderAdvanced(cfg); }
+
+/* ===== Saves ===== */
+id('btnSaveAppearance').addEventListener('click',()=>{ const cfg=loadCfg(); cfg.theme.primary=id('thPrimary').value||'#7c5cff'; cfg.theme.secondary=id('thSecondary').value||'#3ca6ff'; cfg.theme.radius=Number(id('thRadius').value||14); saveCfg(cfg); });
+id('btnSaveTexts').addEventListener('click',()=>{ const cfg=loadCfg(); cfg.texts.heroTitle=id('txHeroTitle').value||'Bilheteria Online'; cfg.texts.heroSubtitle=id('txHeroSubtitle').value||'Baile do RK'; cfg.texts.pageTitle=id('txPageTitle').value||DEFAULT_CFG.texts.pageTitle; cfg.texts.pageSubtitle=id('txPageSubtitle').value||DEFAULT_CFG.texts.pageSubtitle; cfg.texts.noticeImportant=id('txNotice1').value||DEFAULT_CFG.texts.noticeImportant; cfg.texts.noticePayment=id('txNotice2').value||DEFAULT_CFG.texts.noticePayment; cfg.texts.thanksTitle=id('txThanksTitle').value||DEFAULT_CFG.texts.thanksTitle; cfg.texts.thanksText=id('txThanksText').value||DEFAULT_CFG.texts.thanksText; saveCfg(cfg); });
+id('btnSavePayment').addEventListener('click',()=>{ const cfg=loadCfg(); cfg.payment.pixKey=id('pgPixKey').value||cfg.payment.pixKey; cfg.payment.merchant=(id('pgMerchant').value||cfg.payment.merchant).toUpperCase().slice(0,25); cfg.payment.city=(id('pgCity').value||cfg.payment.city).toUpperCase().slice(0,15); cfg.payment.whatsapp=id('pgWhats').value||cfg.payment.whatsapp; saveCfg(cfg); });
+id('btnSavePrices').addEventListener('click',()=>{ const cfg=loadCfg(); cfg.prices.M=Number(id('prBaseM').value||cfg.prices.M); cfg.prices.F=Number(id('prBaseF').value||cfg.prices.F); saveCfg(cfg); });
+id('btnSaveCss').addEventListener('click',()=>{ const cfg=loadCfg(); cfg.customCSS = id('advCss').value||''; saveCfg(cfg); });
+
+/* Coupons CRUD */
+id('btnAddCoupon').addEventListener('click',()=>{
+  const code=(id('cpCode').value||'').trim(); const m=Number(id('cpM').value||0); const f=Number(id('cpF').value||0);
+  if(!code){ toast('Informe o código.'); return; }
+  if(m<=0 || f<=0){ toast('Preços do cupom devem ser > 0.'); return; }
+  const cfg=loadCfg(); cfg.coupons = (cfg.coupons||[]);
+  const idx = cfg.coupons.findIndex(x=>x.code && x.code.trim().toLowerCase()===code.toLowerCase());
+  const obj = {code, M:m, F:f, active:true};
+  if(idx>=0) cfg.coupons[idx]=Object.assign(cfg.coupons[idx], obj);
+  else cfg.coupons.push(obj);
+  saveCfg(cfg); renderCoupons(cfg); toast('Cupom salvo.');
+});
+id('cpTable').addEventListener('click',(e)=>{
+  const act=e.target?.dataset?.act; if(!act) return;
+  const idx=Number(e.target.dataset.idx);
+  const cfg=loadCfg(); if(!cfg.coupons||!cfg.coupons[idx]) return;
+  if(act==='del'){ if(confirm('Remover este cupom?')){ cfg.coupons.splice(idx,1); saveCfg(cfg); renderCoupons(cfg); } }
+  if(act==='edit'){ const c=cfg.coupons[idx]; id('cpCode').value=c.code; id('cpM').value=c.M; id('cpF').value=c.F; toast('Cupom carregado no formulário para edição.'); }
+  if(act==='toggle'){ cfg.coupons[idx].active=!cfg.coupons[idx].active; saveCfg(cfg); renderCoupons(cfg); }
+});
+
+/* Export / Import / Reset */
+id('btnExport').addEventListener('click',()=>{
+  const cfg=loadCfg(); const blob=new Blob([JSON.stringify(cfg,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='config-bilhetes.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+});
+id('fileImport').addEventListener('change',(e)=>{
+  const f=e.target.files?.[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{ try{ const cfg=JSON.parse(r.result); saveCfg(cfg); renderAll(); toast('Config importada.'); }catch{ alert('JSON inválido.'); } };
+  r.readAsText(f);
+});
+id('btnReset').addEventListener('click',()=>{ if(confirm('Resetar para padrão?')){ localStorage.setItem(CFG_KEY, JSON.stringify(DEFAULT_CFG)); renderAll(); toast('Padrão restaurado.'); }});
+
+/* Login binds */
+id('btnLogin').addEventListener('click', doLogin);
+id('btnVerify').addEventListener('click', verify2FA);
+id('btnConfirmSetup').addEventListener('click', confirmSetup2FA);
+id('btnCopySecret').addEventListener('click', copySecret);
+id('btnRegenSecret').addEventListener('click', regenSecret);
+id('btnBack1').addEventListener('click', ()=>{ id('twofa').style.display='none'; });
+id('btnBack2').addEventListener('click', ()=>{ id('setup').style.display='none'; });
+id('btnLogout').addEventListener('click', logout);
+
+/* Bootstrap */
+(function init(){
+  if(localStorage.getItem(ADMIN_FLAG)==='1'){ enter(); } else { showLogin(); }
+})();
+</script>
+</body>
+</html>

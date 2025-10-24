@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bilheteria Online – Baile do RK</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg:#0e0f13;--panel:#16181f;--soft:#1e212b;--text:#e9edf1;--muted:#9aa5b1;
+    --accent:#7c5cff;--accent2:#3dd4bf;--r:14px;--ok:#2dd4bf;--err:#ff6b6b;
+    --purple:#7c5cff;--purple-d:#5e43ff;--blue:#3ca6ff
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;font-family:"Inter","Poppins",system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial;
+    background:
+      radial-gradient(1200px 800px at 80% -10%,#1a1b25 0%,var(--bg) 50%) fixed no-repeat,
+      linear-gradient(180deg,#0d0f14 0,#0e0f13 100%);
+    color:var(--text)
+  }
+  .container{max-width:1024px;margin:32px auto;padding:0 16px 56px}
+  header{text-align:center;margin:6px 0 22px}
+  .logo{display:inline-block;margin-bottom:8px}
+  .logo svg{width:min(520px,94vw);height:auto;filter:drop-shadow(0 10px 30px rgba(124,92,255,.35))}
+  h1{
+    margin:4px 0 6px;font-size:clamp(26px,3.2vw,40px);font-weight:800;
+    background:linear-gradient(90deg,var(--purple),#8f85ff,var(--blue));
+    -webkit-background-clip:text;background-clip:text;color:transparent;letter-spacing:.2px
+  }
+  .subtitle{color:var(--muted);max-width:740px;margin:0 auto}
+
+  .card{
+    background:linear-gradient(180deg,var(--panel),#141720 50%,var(--panel));
+    border:1px solid #222532;border-radius:var(--r);
+    box-shadow:0 10px 30px rgba(0,0,0,.35);padding:18px
+  }
+  .card h2{margin:4px 0 14px;font-size:18px}
+  .row{display:grid;gap:12px;grid-template-columns:1fr}
+  @media (min-width:560px){.row.two{grid-template-columns:1fr 1fr}}
+  label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+  input[type=text],input[type=tel],input[type=password],input[type=number],select{
+    width:100%;padding:12px 14px;border-radius:10px;border:1px solid #2a2f3d;
+    background:var(--soft);color:var(--text);outline:none;transition:border .2s,box-shadow .2s
+  }
+  input::placeholder{color:#7b869a}
+  input:focus,select:focus{border-color:#3a4160;box-shadow:0 0 0 3px rgba(124,92,255,.15)}
+
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;width:100%;gap:10px;
+    padding:14px 16px;border:0;border-radius:12px;color:#fff;
+    background:linear-gradient(135deg,var(--purple) 0%,#6f56ff 50%,#4e7dff 100%);font-weight:700;cursor:pointer;
+    box-shadow:0 10px 25px rgba(124,92,255,.35),inset 0 1px 0 rgba(255,255,255,.1);
+    transition:transform .08s ease, box-shadow .2s ease, filter .2s ease
+  }
+  .btn:hover{filter:brightness(1.05)}
+  .btn:active{transform:translateY(1px)}
+  .btn.secondary{background:linear-gradient(180deg,#2b3345,#22293a);color:#e6ebff}
+  .btn.success{background:linear-gradient(180deg,#18c964,#0fb05a)}
+  .btn.warn{background:linear-gradient(180deg,#f6a800,#de8b00)}
+  .btn.ghost{background:linear-gradient(180deg,#242a3a,#1d2333);color:#d9e7ff}
+  .btn.small{width:auto;padding:8px 12px;font-size:13px;border-radius:10px}
+  .btn:disabled{opacity:.6;cursor:not-allowed;filter:grayscale(.25)}
+  .help{font-size:12px;color:var(--muted);margin-top:6px}
+  .help.ok{color:var(--ok)} .help.err{color:var(--err)}
+
+  /* Wizard */
+  .wizard{margin:12px auto 20px;max-width:820px}
+  .steps{display:flex;gap:10px;align-items:center;justify-content:center;margin-bottom:14px;flex-wrap:wrap}
+  .step-dot{display:flex;align-items:center;gap:8px}
+  .dot{width:12px;height:12px;border-radius:50%;background:#2e3350;border:1px solid #3c436a;box-shadow:0 0 0 0 rgba(124,92,255,.0);transition:all .25s ease}
+  .step-dot.active .dot{background:linear-gradient(90deg,var(--purple),var(--blue));box-shadow:0 0 12px rgba(124,92,255,.7)}
+  .step-dot span{font-size:12px;color:#9aa5b1}
+  .step-dot.active span{color:#d8ddff}
+  .progress-rail{height:6px;border-radius:999px;background:#1a1f32;border:1px solid #2b3150;overflow:hidden}
+  .progress-fill{height:100%;width:0;background:linear-gradient(90deg,var(--purple),var(--blue));transition:width .35s ease}
+
+  .grid{display:grid;gap:18px;grid-template-columns:1fr}
+  @media (min-width:920px){.grid.two-cols{grid-template-columns:1.15fr .85fr}}
+
+  .total{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding:14px 16px;background:#12141b;border:1px solid #222532;border-radius:12px}
+  .total strong{font-size:20px}
+  .price-pill{display:inline-flex;gap:8px;align-items:center;padding:8px 10px;background:#11141b;border:1px dashed #2b2f3e;border-radius:999px;color:var(--muted);font-size:13px;margin-bottom:8px}
+  .price{color:var(--accent2);font-weight:700}
+  .center{text-align:center}
+
+  /* QR/PIX */
+  #qrcodeBox{background:#fff;border:1px solid #dfe3ea;border-radius:12px;padding:12px;display:grid;place-items:center;min-height:284px;margin-top:12px}
+  .pix-wrap{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:10px}
+  .pix-box{padding:12px 14px;background:#10131a;border:1px solid #222532;border-radius:10px;color:#cde8ff;font-family:ui-monospace,Menlo,Consolas,monospace}
+
+  /* Avisos */
+  .notice{
+    margin-top:14px;padding:12px 14px;border:1px dashed #5b3044;background:#1a1216;color:#ffd6df;border-radius:12px;font-size:13px
+  }
+  .notice strong{color:#ff9ab1}
+
+  /* Acompanhantes */
+  #companionsCard{display:none}
+  .comp-row{
+    display:grid;grid-template-columns:1fr 220px;gap:10px;
+    background:#11141b;border:1px solid #222532;border-radius:10px;
+    padding:10px;margin-top:10px
+  }
+  @media (max-width:560px){ .comp-row{grid-template-columns:1fr} }
+  .comp-row label{font-size:12px;color:#9aa5b1;margin:0 0 4px}
+  .comp-row input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #2a2f3d;background:#1a1e29;color:#e9edf1}
+
+  /* Modal processando */
+  .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;z-index:999}
+  .modal{background:#16181f;border:1px solid #2a2f3d;border-radius:14px;max-width:420px;width:92%;padding:20px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .spinner{width:40px;height:40px;border-radius:50%;border:4px solid #2b3345;border-top-color:#18c964;margin:10px auto 14px;animation:spin 0.9s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .progress-wrap{margin-top:10px;text-align:left}
+  .progress-bar{position:relative;height:10px;border-radius:999px;overflow:hidden;background:linear-gradient(180deg,#22273a,#1b2031);border:1px solid #2b3150}
+  .progress-fill-anim{height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,var(--purple),var(--purple-d));position:relative;overflow:hidden}
+  .progress-fill-anim::after{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent 0%,rgba(255,255,255,.25) 50%,transparent 100%);width:40%;transform:translateX(-100%);animation:shine 1.4s infinite}
+
+  .pay-wait{margin-top:8px;padding:10px 12px;border:1px dashed #3a4160;border-radius:10px;background:#12141b;color:#cfe3ff;font-size:13px}
+  .whats-call{margin-top:10px;padding:12px 14px;border:1px solid #375b2a;background:#0d1a10;border-radius:10px;color:#b8f3c2;font-weight:700;text-align:center}
+
+  /* Admin embutido (atalho) */
+  #adminPanel{display:none;margin-top:18px}
+  .admin-grid{overflow:auto}
+  table{width:100%;border-collapse:collapse;border:1px solid #2a2f3d;background:#0f1117}
+  th,td{padding:10px;border-bottom:1px solid #2a2f3d;text-align:left}
+  th{background:#151a24}
+  .admin-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  #adminFab{position:fixed;right:16px;bottom:16px;z-index:998;display:none;width:auto;padding:10px 14px}
+  /* Custom CSS injetado via painel */
+  /* O painel pode salvar CSS em localStorage; aqui injetaremos numa <style id="customCss"> */
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo" aria-hidden="true">
+      <svg viewBox="0 0 700 140" xmlns="http://www.w3.org/2000/svg" role="img">
+        <defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#7c5cff"/><stop offset="55%" stop-color="#8f85ff"/><stop offset="100%" stop-color="#3ca6ff"/></linearGradient></defs>
+        <text id="heroTitleSvg" x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Poppins, sans-serif" font-weight="800" font-size="52" fill="url(#g)">Bilheteria Online</text>
+        <text id="heroSubtitleSvg" x="50%" y="88%" dominant-baseline="middle" text-anchor="middle" font-family="Poppins, sans-serif" font-weight="600" font-size="28" fill="#e9edf1" opacity="0.9">Baile do RK</text>
+      </svg>
+    </div>
+    <h1 id="pageTitle">Finalize seu ingresso com Pix em segundos</h1>
+    <p id="pageSubtitle" class="subtitle">Wizard de 3 etapas • QR Pix com valor automático • Mensagem do WhatsApp com todos os nomes.</p>
+  </header>
+
+  <section class="wizard">
+    <div class="steps">
+      <div id="s1" class="step-dot active"><span class="dot"></span><span>Etapa 1: Seus dados</span></div>
+      <div id="s2" class="step-dot"><span class="dot"></span><span>Etapa 2: Acompanhantes & Pagamento</span></div>
+      <div id="s3" class="step-dot"><span class="dot"></span><span>Etapa 3: Obrigado</span></div>
+    </div>
+    <div class="progress-rail"><div id="progressFill" class="progress-fill" style="width:33%"></div></div>
+  </section>
+
+  <!-- STEP 1 -->
+  <section id="step1" class="step active">
+    <div class="card">
+      <h2>Seus dados e ingressos</h2>
+      <div class="row">
+        <div>
+          <label for="nome">Nome completo</label>
+          <input id="nome" type="text" placeholder="Seu nome e sobrenome" autocomplete="name" />
+        </div>
+        <div>
+          <label for="whats">WhatsApp <small style="color:#9aa5b1">(somente números)</small></label>
+          <input id="whats" type="tel" inputmode="numeric" pattern="\d+" placeholder="Ex.: 1199XXXXXXX (11 dígitos)" autocomplete="tel" />
+          <div id="whatsStatus" class="help">Ex.: <strong>1199XXXXXXX</strong> (11 dígitos)</div>
+        </div>
+      </div>
+
+      <hr style="border:0;border-top:1px solid #232736;margin:16px 0" />
+
+      <div class="row two">
+        <div>
+          <div class="price-pill">Masculino • <span class="price" id="precoM-label">R$ 25,00</span></div>
+          <label for="qtdM">Quantidade</label>
+          <select id="qtdM"></select>
+        </div>
+        <div>
+          <div class="price-pill">Feminino • <span class="price" id="precoF-label">R$ 15,00</span></div>
+          <label for="qtdF">Quantidade</label>
+          <select id="qtdF"></select>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:14px">
+        <div>
+          <label for="cupom">Código promocional (opcional)</label>
+          <input id="cupom" type="text" placeholder="Ex.: PRIMEIRO LOTE" />
+          <div id="cupomMsg" class="help">Use <strong>PRIMEIRO LOTE</strong> para desconto.</div>
+          <div id="cupomOk" class="help ok" style="display:none">✅ CUPOM ATIVADO COM SUCESSO!</div>
+        </div>
+      </div>
+
+      <div class="total"><span>Total a pagar</span><strong id="totalTxt">R$ 0,00</strong></div>
+
+      <div class="notice" id="noticeImportant">
+        <strong>Importante:</strong> <br>
+        • <strong>Não haverá devolução de valor.</strong> Só compre o ingresso se tiver total certeza de que vai comparecer ao evento. <br>
+        • A <strong>localização e demais informações</strong> serão divulgadas no <strong>grupo exclusivo dos compradores</strong> após a confirmação do pagamento.
+      </div>
+
+      <div class="row two" style="margin-top:14px">
+        <button id="btnNext" class="btn" type="button">Continuar</button>
+        <button id="btnSkip" class="btn secondary" type="button" title="Ir direto ao pagamento">Ir para pagamento</button>
+      </div>
+      <p class="help">Você poderá adicionar os acompanhantes na etapa 2 (se houver).</p>
+    </div>
+  </section>
+
+  <!-- STEP 2 -->
+  <section id="step2" class="step">
+    <div class="grid two-cols">
+      <section id="companionsCard" class="card" style="display:none">
+        <h2>Acompanhantes</h2>
+        <p class="help" id="companionsHelp">Informe os dados dos acompanhantes.</p>
+        <div id="companionsList"></div>
+        <div class="row two" style="margin-top:14px">
+          <button id="btnPrev" class="btn secondary" type="button">Voltar</button>
+          <button id="btnFinish" class="btn" type="button">Finalizar pagamento</button>
+        </div>
+      </section>
+
+      <aside class="card">
+        <h2 class="center">Pagamento por Pix</h2>
+        <div id="qrcodeBox"><div id="qrcode" aria-live="polite"></div></div>
+        <div class="pix-wrap">
+          <div class="pix-box"><strong>Código Pix (copia e cola)</strong>: gere o QR para copiar com valor.</div>
+          <button id="btnCopyPixCode" class="btn small secondary" type="button">Copiar código Pix</button>
+          <button id="btnOpenBank" class="btn small warn" type="button">Vou pagar agora</button>
+          <button id="btnPaid" class="btn small success" type="button" disabled>Já paguei</button>
+          <button id="btnSaveQR" class="btn small secondary" type="button" disabled>Baixar QR como imagem</button>
+        </div>
+        <div id="payWait" class="pay-wait" style="display:none"></div>
+        <div id="whatsCall" class="whats-call" style="display:none">POR FAVOR, ENVIAR COMPROVANTE NO WHATSAPP</div>
+
+        <div class="notice" id="noticePayment" style="margin-top:14px">
+          <strong>Importante:</strong> <br>
+          • <strong>Não haverá devolução de valor.</strong> <br>
+          • A <strong>localização e informações oficiais</strong> serão divulgadas apenas no <strong>grupo exclusivo dos compradores</strong> após a confirmação do pagamento.
+        </div>
+
+        <div class="row two" style="margin-top:14px">
+          <button id="btnGerar" class="btn" type="button">Calcular &amp; Gerar QR Code</button>
+          <button id="btnWhats" class="btn secondary" type="button" disabled>Enviar Comprovante via WhatsApp</button>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- STEP 3 -->
+  <section id="step3" class="step">
+    <div class="card">
+      <h2 id="thanksTitle">🎉 Obrigado pela compra!</h2>
+      <p id="thanksText" class="help" style="font-size:14px">
+        Recebemos sua confirmação. Agora é só <strong>enviar o comprovante</strong> no WhatsApp (já abrimos em outra guia para você).
+        Assim que validarmos, você será adicionado ao <strong>grupo exclusivo dos compradores</strong>, onde divulgaremos
+        a <strong>localização e todas as informações oficiais</strong> do evento.
+      </p>
+
+      <div class="notice" id="noticeReinforce">
+        <strong>Reforçando:</strong> não há devolução de valor. Certifique-se de estar disponível na data do evento.
+      </div>
+
+      <div class="row two" style="margin-top:14px">
+        <a href="./" class="btn" style="text-decoration:none;text-align:center">Voltar à página inicial</a>
+        <a href="#" id="btnOpenWhatsAgain" class="btn secondary" style="text-decoration:none;text-align:center">Abrir WhatsApp novamente</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- (atalho flutuante de admin – opcional) -->
+  <button id="adminFab" class="btn small secondary" type="button" style="display:none">Admin</button>
+</div>
+
+<!-- Modal processando -->
+<div id="processing" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="procTitle" aria-describedby="procDesc">
+  <div class="modal">
+    <div class="spinner" aria-hidden="true"></div>
+    <h3 id="procTitle" style="margin:0 0 6px">Estamos processando seu pagamento…</h3>
+    <p id="procDesc" style="margin:0;color:#9aa5b1">Isso leva poucos segundos.</p>
+    <div class="progress-wrap"><div class="progress-bar"><div id="progressFill2" class="progress-fill-anim"></div></div></div>
+  </div>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<style id="customCss"></style>
+
+<script>
+/* ===================== CONFIG DINÂMICA (editável no painel) ===================== */
+const CFG_KEY = 'rk_site_cfg_v1';
+const DEFAULT_CFG = {
+  theme:{ primary:'#7c5cff', secondary:'#3ca6ff', radius:14 },
+  texts:{
+    heroTitle:'Bilheteria Online',
+    heroSubtitle:'Baile do RK',
+    pageTitle:'Finalize seu ingresso com Pix em segundos',
+    pageSubtitle:'Wizard de 3 etapas • QR Pix com valor automático • Mensagem do WhatsApp com todos os nomes.',
+    noticeImportant:'<strong>Importante:</strong><br>• <strong>Não haverá devolução de valor.</strong> Só compre o ingresso se tiver total certeza de que vai comparecer ao evento.<br>• A <strong>localização e demais informações</strong> serão divulgadas no <strong>grupo exclusivo dos compradores</strong> após a confirmação do pagamento.',
+    noticePayment:'<strong>Importante:</strong><br>• <strong>Não haverá devolução de valor.</strong><br>• A <strong>localização e informações oficiais</strong> serão divulgadas apenas no <strong>grupo exclusivo dos compradores</strong> após a confirmação do pagamento.',
+    thanksTitle:'🎉 Obrigado pela compra!',
+    thanksText:'Recebemos sua confirmação. Agora é só <strong>enviar o comprovante</strong> no WhatsApp (já abrimos em outra guia para você). Assim que validarmos, você será adicionado ao <strong>grupo exclusivo dos compradores</strong>, onde divulgaremos a <strong>localização e todas as informações oficiais</strong> do evento.'
+  },
+  payment:{ pixKey:'bailedork2025@gmail.com', merchant:'RICARDO WILLYSMAR PEREIRA DA SILVA', city:'RECIFE', whatsapp:'+5581991405977' },
+  prices:{ M:25, F:15 },
+  coupons:[
+    { code:'PRIMEIRO LOTE', M:20, F:10, active:true }
+  ],
+  customCSS:''
+};
+
+function loadCfg(){
+  try{ return Object.assign({}, DEFAULT_CFG, JSON.parse(localStorage.getItem(CFG_KEY)||'{}')); }
+  catch(e){ return JSON.parse(JSON.stringify(DEFAULT_CFG)); }
+}
+function applyCfg(cfg){
+  // tema
+  document.documentElement.style.setProperty('--r', (cfg?.theme?.radius ?? 14)+'px');
+  const p = cfg?.theme?.primary || '#7c5cff';
+  const s = cfg?.theme?.secondary || '#3ca6ff';
+  document.documentElement.style.setProperty('--purple', p);
+  document.documentElement.style.setProperty('--purple-d', p);
+  document.documentElement.style.setProperty('--blue', s);
+
+  // textos
+  id('heroTitleSvg').textContent = cfg?.texts?.heroTitle || 'Bilheteria Online';
+  id('heroSubtitleSvg').textContent = cfg?.texts?.heroSubtitle || 'Baile do RK';
+  id('pageTitle').textContent = cfg?.texts?.pageTitle || DEFAULT_CFG.texts.pageTitle;
+  id('pageSubtitle').textContent = cfg?.texts?.pageSubtitle || DEFAULT_CFG.texts.pageSubtitle;
+  id('noticeImportant').innerHTML = cfg?.texts?.noticeImportant || DEFAULT_CFG.texts.noticeImportant;
+  id('noticePayment').innerHTML  = cfg?.texts?.noticePayment  || DEFAULT_CFG.texts.noticePayment;
+  id('thanksTitle').textContent  = cfg?.texts?.thanksTitle    || DEFAULT_CFG.texts.thanksTitle;
+  id('thanksText').innerHTML     = cfg?.texts?.thanksText     || DEFAULT_CFG.texts.thanksText;
+
+  // custom CSS
+  id('customCss').textContent = cfg?.customCSS || '';
+
+  // preços exibidos
+  PRECO_BASE.M = Number(cfg?.prices?.M ?? 25);
+  PRECO_BASE.F = Number(cfg?.prices?.F ?? 15);
+  id('precoM-label').textContent = BRL(PRECO_BASE.M);
+  id('precoF-label').textContent = BRL(PRECO_BASE.F);
+
+  // pagamento
+  PIX_KEY   = cfg?.payment?.pixKey   || DEFAULT_CFG.payment.pixKey;
+  MERCHANT  = (cfg?.payment?.merchant || DEFAULT_CFG.payment.merchant).toUpperCase();
+  CITY      = (cfg?.payment?.city || DEFAULT_CFG.payment.city).toUpperCase();
+  WHATS_DEST= cfg?.payment?.whatsapp || DEFAULT_CFG.payment.whatsapp;
+
+  // cupons
+  COUPONS.splice(0, COUPONS.length, ...((cfg?.coupons||[]).filter(c=>c && c.code)));
+  evaluatePromo(); computeTotal(); updateCompanionsUI();
+}
+
+/* auto-aplicar quando mudar no painel (outra aba) */
+window.addEventListener('storage', (e)=>{
+  if(e.key===CFG_KEY){ applyCfg(loadCfg()); toast('Configurações atualizadas.'); }
+});
+
+/* ===================== LÓGICA PADRÃO DA LOJA (mantida) ===================== */
+const id = q => document.getElementById(q);
+const BRL = n => Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const onlyDigits = s => (s||'').replace(/\D+/g,'');
+
+function toast(msg){ const t=id('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1800); }
+
+/* Vars mutáveis por config */
+let PIX_KEY   = DEFAULT_CFG.payment.pixKey;
+let MERCHANT  = DEFAULT_CFG.payment.merchant.toUpperCase();
+let CITY      = DEFAULT_CFG.payment.city.toUpperCase();
+let WHATS_DEST= DEFAULT_CFG.payment.whatsapp;
+const PRECO_BASE  = {M:25,F:15};
+const PRECO_PROMO = {M:20,F:10}; // usado apenas se cupom não vier do painel
+const COUPONS = [...DEFAULT_CFG.coupons]; // {code, M, F, active}
+
+/* Preenche selects 0..10 */
+(function(){ ['qtdM','qtdF'].forEach(k=>{ const el=id(k); for(let i=0;i<=10;i++){ const o=document.createElement('option'); o.value=String(i); o.textContent=i; el.appendChild(o);} }); })();
+
+/* Validação WhatsApp */
+function quickPhoneValidate(raw){
+  const dig = onlyDigits(raw || '');
+  if(dig.length !== 11) return {valid:false, msg:'Use 11 dígitos (DDD + 9 + número).'};
+  const ddd = parseInt(dig.slice(0,2),10);
+  if(isNaN(ddd) || ddd < 11 || ddd > 99) return {valid:false, msg:'DDD inválido (11 a 99).'};
+  if(dig[2] !== '9') return {valid:false, msg:'Após o DDD, o número deve começar com 9.'};
+  return {valid:true, msg:'Número válido.'};
+}
+function updatePhoneHint(){ const st = id('whatsStatus'); const v = quickPhoneValidate(id('whats').value); st.textContent = v.msg; st.classList.remove('ok','err'); st.classList.add(v.valid ? 'ok' : 'err'); }
+
+/* Cupom dinâmico (via painel) */
+let usarPromo=false, promoInUse=null;
+function findCoupon(code){
+  if(!code) return null;
+  const v = (code||'').trim().toLowerCase();
+  return (COUPONS||[]).find(c=>c.active && c.code && c.code.trim().toLowerCase()===v);
+}
+function evaluatePromo(){
+  const boxOk = id('cupomOk');
+  const msg   = id('cupomMsg');
+  const raw   = (id('cupom').value||'').trim();
+
+  const c = findCoupon(raw);
+  if(c){
+    usarPromo=true; promoInUse=c;
+    id('precoM-label').textContent = BRL(Number(c.M));
+    id('precoF-label').textContent = BRL(Number(c.F));
+    msg.innerHTML = 'Cupom aplicado! Preços promocionais ativos.';
+    boxOk.style.display='block';
+    toast('CUPOM ATIVADO COM SUCESSO!');
+  }else{
+    usarPromo=false; promoInUse=null;
+    id('precoM-label').textContent = BRL(PRECO_BASE.M);
+    id('precoF-label').textContent = BRL(PRECO_BASE.F);
+    msg.innerHTML = raw ? 'Cupom inválido.' : 'Use seu código promocional (opcional).';
+    boxOk.style.display='none';
+  }
+}
+
+/* Total */
+function computeTotal(){
+  const qM=Number(id('qtdM').value)||0; const qF=Number(id('qtdF').value)||0;
+  const pM=usarPromo && promoInUse ? Number(promoInUse.M) : PRECO_BASE.M;
+  const pF=usarPromo && promoInUse ? Number(promoInUse.F) : PRECO_BASE.F;
+  const total=qM*pM+qF*pF; id('totalTxt').textContent=BRL(total);
+  return {qM,qF,pM,pF,total};
+}
+
+/* Companions */
+function buildCompanionRow(i){
+  const wrap = document.createElement('div');
+  wrap.className = 'comp-row';
+  wrap.innerHTML = `
+    <div>
+      <label for="compName_${i}">Nome do acompanhante #${i}</label>
+      <input id="compName_${i}" type="text" placeholder="Nome completo do acompanhante #${i}">
+    </div>
+    <div>
+      <label for="compWhats_${i}">WhatsApp (11 dígitos)</label>
+      <input id="compWhats_${i}" type="tel" inputmode="numeric" placeholder="Ex.: 1199XXXXXXX">
+    </div>`;
+  const tel = wrap.querySelector(`#compWhats_${i}`);
+  tel.addEventListener('input', e=>{ e.target.value = (e.target.value||'').replace(/\D+/g,'').slice(0,11); });
+  return wrap;
+}
+function updateCompanionsUI(){
+  const {qM,qF} = computeTotal();
+  const total = qM + qF;
+  const card = id('companionsCard');
+  const list = id('companionsList');
+  const help = id('companionsHelp');
+
+  if(total >= 2){
+    card.style.display = 'block';
+    const needed = total - 1;
+    list.innerHTML = '';
+    for(let i=1;i<=needed;i++){ list.appendChild(buildCompanionRow(i)); }
+    help.textContent = `Você selecionou ${total} ingresso(s). Informe os dados de ${needed} acompanhante(s).`;
+  }else{
+    card.style.display = 'none'; list.innerHTML = '';
+  }
+}
+function collectCompanions(){
+  const {qM,qF} = computeTotal(); const total = qM + qF; const arr = []; if(total < 2) return arr;
+  const needed = total - 1;
+  for(let i=1;i<=needed;i++){
+    const name = (id(`compName_${i}`)?.value || '').trim();
+    const whats = (id(`compWhats_${i}`)?.value || '').replace(/\D+/g,'');
+    arr.push({name, whats});
+  }
+  return arr;
+}
+function validateCompanions(){
+  const {qM,qF} = computeTotal(); const total = qM + qF;
+  if(total < 2) return true;
+  const comps = collectCompanions(); const needed = total - 1;
+  if(comps.length !== needed){ alert('Preencha os dados dos acompanhantes.'); return false; }
+  for(let i=0;i<comps.length;i++){
+    const idx = i+1; if(!comps[i].name){ alert(`Informe o nome do acompanhante #${idx}.`); return false; }
+    const w = comps[i].whats || ''; if(w.length !== 11){ alert(`WhatsApp do acompanhante #${idx} deve ter 11 dígitos.`); return false; }
+    if(w[2] !== '9'){ alert(`WhatsApp do acompanhante #${idx} deve começar com 9 após o DDD.`); return false; }
+  }
+  return true;
+}
+
+/* Valida comprador e total */
+function validate(){
+  const nome=id('nome').value.trim(); const whatsRaw=id('whats').value; const phone = quickPhoneValidate(whatsRaw); const {qM,qF,total}=computeTotal();
+  if(!nome){ alert('Informe seu nome completo.'); return; }
+  if(!phone.valid){ alert('WhatsApp inválido: '+phone.msg); return; }
+  if(qM+qF===0){ alert('Selecione ao menos 1 ingresso.'); return; }
+  if(total<=0){ alert('Total inválido.'); return; }
+  return {nome,whats:onlyDigits(whatsRaw),qM,qF,total};
+}
+
+/* ===== Pix EMV ===== */
+function tlv(id2, value){ const len=String(value.length).padStart(2,'0'); return id2+len+value; }
+function crc16(payload){ let crc=0xFFFF; for(let i=0;i<payload.length;i++){ crc ^= payload.charCodeAt(i) << 8; for(let j=0;j<8;j++){ crc = (crc & 0x8000) ? ((crc<<1)^0x1021) : (crc<<1); crc &= 0xFFFF; } } return crc.toString(16).toUpperCase().padStart(4,'0'); }
+function buildPixEMV({pixKey, merchantName, merchantCity, amount, txid, description}){
+  merchantName=(merchantName||'').toUpperCase().substring(0,25); merchantCity=(merchantCity||'').toUpperCase().substring(0,15);
+  const gui = tlv('00','br.gov.bcb.pix'); const key = tlv('01', pixKey); const desc= description ? tlv('02', description.substring(0,50)) : '';
+  const mai = tlv('26', gui + key + desc); const mcc = tlv('52','0000'); const curr= tlv('53','986');
+  const amt = tlv('54', Number(amount).toFixed(2)); const ctry= tlv('58','BR'); const name= tlv('59', merchantName); const city= tlv('60', merchantCity);
+  const adt = tlv('62', tlv('05', txid)); const base = tlv('00','01') + tlv('01','12') + mai + mcc + curr + amt + ctry + name + city + adt + '6304';
+  return base + crc16(base);
+}
+
+/* Timers pagamento */
+let lastEmv = '', lastTxid = '', waitTimer = null, waitRemaining = 0, waitStarted = false, lastWhatsURL='';
+const mmss = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+function startPayWait(){
+  if (waitStarted && waitRemaining > 0) return;
+  waitRemaining = Math.floor(30 + Math.random()*31); waitStarted = true;
+  id('btnPaid').disabled = true; id('payWait').style.display = 'block';
+  id('payWait').textContent = `Aguarde cerca de ${waitRemaining}s para concluir o pagamento… (${mmss(waitRemaining)})`;
+  if (waitTimer) clearInterval(waitTimer);
+  waitTimer = setInterval(()=>{
+    waitRemaining--;
+    if(waitRemaining<=0){
+      clearInterval(waitTimer);
+      id('btnPaid').disabled = false; id('payWait').style.display = 'none'; toast('Você já pode clicar em “Já paguei”.');
+    }else{
+      id('payWait').textContent = `Aguarde cerca de ${waitRemaining}s para concluir o pagamento… (${mmss(waitRemaining)})`;
+    }
+  },1000);
+}
+
+/* QR + Código Pix */
+function gerarQR(){
+  evaluatePromo(); const base=validate(); if(!base) return;
+  if(!validateCompanions()) return;
+  const {total}=computeTotal();
+  lastTxid = ('RK' + Date.now()).substring(0,25);
+  lastEmv  = buildPixEMV({ pixKey:PIX_KEY, merchantName:MERCHANT, merchantCity:CITY, amount:total, txid:lastTxid, description:'Baile do RK' });
+  id('qrcode').innerHTML=''; new QRCode(id('qrcode'), { text:lastEmv, width:280, height:280, colorDark:'#000', colorLight:'#fff', correctLevel:QRCode.CorrectLevel.M });
+  setTimeout(()=>{ id('btnSaveQR').disabled = !id('qrcode').querySelector('img,canvas'); }, 80);
+  id('btnPaid').disabled = true; id('btnWhats').disabled = true; id('whatsCall').style.display = 'none';
+  if (waitTimer){ clearInterval(waitTimer); waitTimer=null; } id('payWait').style.display = 'none'; waitStarted = false;
+}
+async function copiarCodigoPix(){
+  if(!lastEmv){
+    evaluatePromo(); const base=validate(); if(!base) return;
+    if(!validateCompanions()) return;
+    const {total}=computeTotal();
+    lastTxid=('RK'+Date.now()).substring(0,25);
+    lastEmv = buildPixEMV({pixKey:PIX_KEY, merchantName:MERCHANT, merchantCity:CITY, amount:total, txid:lastTxid, description:'Baile do RK'});
+  }
+  try{
+    if(navigator.clipboard && (location.protocol==='https:' || location.hostname==='localhost')){ await navigator.clipboard.writeText(lastEmv); }
+    else{ const ta=document.createElement('textarea'); ta.value=lastEmv; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+    toast('Código Pix copiado!'); startPayWait();
+  }catch{ alert('Não foi possível copiar. Tente gerar o QR novamente.'); }
+}
+function abrirBanco(){
+  if(!lastEmv){ try{ gerarQR(); }catch(e){} } startPayWait();
+  const overlay = document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:9999';
+  overlay.innerHTML = `
+    <div style="background:#16181f;border:1px solid #2a2f3d;border-radius:14px;max-width:420px;width:92%;padding:20px 18px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+      <h3 style="margin:0 0 8px">Você pode pagar com segurança</h3>
+      <p style="color:#9aa5b1;font-size:14px;margin:0 0 14px">
+        Agora você pode sair deste site e abrir o app do seu banco para efetuar o Pix.
+        Continuaremos aguardando seu pagamento por alguns segundos.
+      </p>
+      <button id="btnFecharAviso" class="btn small secondary" type="button" style="width:auto">Entendi</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#btnFecharAviso').onclick = () => overlay.remove();
+}
+function baixarQR(){
+  const box=id('qrcode'); const img=box.querySelector('img'); const canvas=box.querySelector('canvas');
+  let url=''; if(img&&img.src) url=img.src; else if(canvas) url=canvas.toDataURL('image/png'); else { alert('Gere o QR primeiro.'); return; }
+  const a=document.createElement('a'); a.href=url; a.download='qr-baile-do-rk.png'; document.body.appendChild(a); a.click(); a.remove();
+}
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden'){ return; } if(lastEmv && !waitStarted){ startPayWait(); } });
+
+/* Modal 5s */
+function startModalProgress(durationMs=5000){
+  const modal = id('processing'); const fill = id('progressFill2'); fill.style.width = '0%'; modal.style.display = 'flex';
+  const start = performance.now();
+  function step(now){
+    const p = Math.min((now - start) / durationMs, 1); fill.style.width = (p*100).toFixed(2) + '%';
+    if(p < 1) requestAnimationFrame(step);
+    else { modal.style.display = 'none'; id('btnWhats').disabled = false; id('whatsCall').style.display = 'block'; id('whatsCall').scrollIntoView({behavior:'smooth', block:'center'}); toast('Pagamento confirmado! Por favor, enviar comprovante no WhatsApp.'); }
+  }
+  requestAnimationFrame(step);
+}
+function confirmarPagamento(){ if (id('btnPaid').disabled) return; startModalProgress(5000); }
+
+/* Vendas (localStorage) */
+const DB_KEY='rk_bilhetes_vendas_v1';
+const loadSales=()=>{try{return JSON.parse(localStorage.getItem(DB_KEY)||'[]')}catch(e){return[]}};
+const saveSales=arr=>localStorage.setItem(DB_KEY,JSON.stringify(arr));
+const addSale=rec=>{const a=loadSales(); a.push(rec); saveSales(a);};
+
+function enviarWhats(){
+  if(id('btnWhats').disabled) return;
+  const base=validate(); if(!base) return;
+  if(!validateCompanions()) return;
+  const p=computeTotal(); const companions = collectCompanions();
+  const linesComp = companions.length ? ['Acompanhantes:'].concat(companions.map((c,i)=>`• #${i+1}: ${c.name} — +55 ${c.whats}`)) : ['Acompanhantes: (nenhum)'];
+  addSale({ts:new Date().toISOString(), nome:base.nome, whats:base.whats, qM:p.qM, qF:p.qF, total:p.total});
+
+  const msg=[
+    'Comprovante – Bilheteria Online – Baile do RK','--------------------------------',
+    `Comprador: ${base.nome}`,`WhatsApp do comprador: +55 ${base.whats}`,'',
+    'Ingressos:',`• Masculino: ${p.qM} (cada ${BRL(usarPromo && promoInUse ? Number(promoInUse.M):PRECO_BASE.M)})`,`• Feminino: ${p.qF} (cada ${BRL(usarPromo && promoInUse ? Number(promoInUse.F):PRECO_BASE.F)})`,'',
+    ...linesComp,'',`Total pago: ${BRL(p.total)}`,'',
+    '⚠️ Importante: Não haverá devolução de valor. Localização e demais informações serão divulgadas apenas no grupo exclusivo dos compradores após a confirmação do pagamento.','',
+    'Código Pix (copia e cola):', lastEmv ? lastEmv : '(gerar no site)'
+  ].join('\n');
+
+  const url = 'https://wa.me/' + encodeURIComponent(WHATS_DEST) + '?text=' + encodeURIComponent(msg);
+  lastWhatsURL = url;
+  window.open(url, '_blank', 'noopener');
+  setStep(3);
+}
+
+/* Wizard */
+function setStep(n){
+  const step1 = id('step1'), step2=id('step2'), step3=id('step3');
+  const pfill = id('progressFill');
+  const d1=id('s1'), d2=id('s2'), d3=id('s3');
+
+  step1.classList.remove('active'); step2.classList.remove('active'); step3.classList.remove('active');
+  d1.classList.remove('active'); d2.classList.remove('active'); d3.classList.remove('active');
+
+  if(n===1){ step1.classList.add('active'); d1.classList.add('active'); pfill.style.width='33%'; }
+  else if(n===2){ step2.classList.add('active'); d2.classList.add('active'); pfill.style.width='66%'; }
+  else { step3.classList.add('active'); d3.classList.add('active'); pfill.style.width='100%'; }
+
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* Listeners */
+id('cupom').addEventListener('input', ()=>{ evaluatePromo(); computeTotal(); updateCompanionsUI(); });
+id('qtdM').addEventListener('change', ()=>{ computeTotal(); updateCompanionsUI(); });
+id('qtdF').addEventListener('change', ()=>{ computeTotal(); updateCompanionsUI(); });
+id('whats').addEventListener('input', e=>{ e.target.value = onlyDigits(e.target.value).slice(0,11); updatePhoneHint(); });
+
+id('btnNext').addEventListener('click', ()=>{ const base=validate(); if(!base) return; setStep(2); });
+id('btnSkip').addEventListener('click', ()=>{ const base=validate(); if(!base) return; setStep(2); });
+id('btnPrev').addEventListener('click', ()=> setStep(1));
+id('btnFinish').addEventListener('click', ()=>{ gerarQR(); toast('QR gerado. Confira o valor e prossiga com o pagamento.'); });
+
+id('btnGerar').addEventListener('click', gerarQR);
+id('btnSaveQR').addEventListener('click', baixarQR);
+id('btnCopyPixCode').addEventListener('click', copiarCodigoPix);
+id('btnOpenBank').addEventListener('click', abrirBanco);
+id('btnPaid').addEventListener('click', confirmarPagamento);
+id('btnWhats').addEventListener('click', enviarWhats);
+id('btnOpenWhatsAgain').addEventListener('click', (e)=>{ e.preventDefault(); if(lastWhatsURL){ window.open(lastWhatsURL,'_blank','noopener'); } else { toast('Abra o WhatsApp pelo botão da Etapa 2.'); } });
+
+/* Boot: preencher selects, aplicar config e iniciar */
+(function init(){
+  ['qtdM','qtdF'].forEach(k=>{ const el=id(k); if(el.options.length===0){ for(let i=0;i<=10;i++){ const o=document.createElement('option'); o.value=i; o.textContent=i; el.appendChild(o);} }});
+  const cfg = loadCfg(); applyCfg(cfg);
+  computeTotal(); updatePhoneHint(); updateCompanionsUI(); setStep(1);
+})();
+</script>
+</body>
+</html>
